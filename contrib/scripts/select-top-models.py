@@ -17,12 +17,6 @@ import argparse
 from typing import List, Dict, Optional
 from huggingface_hub import HfApi
 
-# Try to import ModelFilter, fall back to dict if not available
-try:
-    from huggingface_hub import ModelFilter
-except ImportError:
-    ModelFilter = None
-
 
 # Supported model file formats (based on pkg/modelfile/constants.go)
 SUPPORTED_FORMATS = [
@@ -232,26 +226,15 @@ def select_top_models(
     # Fetch more models than needed to account for filtering
     fetch_limit = limit * 10
 
-    # Use ModelFilter if available, otherwise pass task as filter string
-    if ModelFilter is not None:
-        model_filter = ModelFilter(
-            task=task,
-            library="transformers",
-        )
-        models = api.list_models(
-            filter=model_filter,
-            sort=sort_by,
-            direction=-1,
-            limit=fetch_limit,
-        )
-    else:
-        # Older API without ModelFilter
-        models = api.list_models(
-            filter=task,
-            sort=sort_by,
-            direction=-1,
-            limit=fetch_limit,
-        )
+    # "trending" in the CLI maps to the API field "trending_score"
+    sort_field = "trending_score" if sort_by == "trending" else sort_by
+
+    models = api.list_models(
+        pipeline_tag=task,
+        filter="transformers",
+        sort=sort_field,
+        limit=fetch_limit,
+    )
 
     selected = []
     checked = 0
